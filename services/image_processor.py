@@ -216,6 +216,11 @@ class ImageProcessor:
         Returns:
             Blended PIL Image
         """
+        # Ensure both images have the same dimensions
+        if base.size != overlay.size:
+            # Resize overlay to match base dimensions
+            overlay = overlay.resize(base.size, Image.Resampling.LANCZOS)
+
         base_array = np.array(base).astype(np.float32)
         overlay_array = np.array(overlay).astype(np.float32)
 

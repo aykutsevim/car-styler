@@ -57,6 +57,23 @@ class CarStylerService:
 
         logger.info("Models loaded successfully")
 
+    @staticmethod
+    def _align_dimensions_to_vae(height: int, width: int, vae_scale_factor: int = 8) -> tuple:
+        """
+        Align dimensions to VAE requirements (multiples of 8).
+
+        Args:
+            height: Original height
+            width: Original width
+            vae_scale_factor: VAE requires dimensions to be multiples of this (default 8)
+
+        Returns:
+            Tuple of (aligned_height, aligned_width)
+        """
+        aligned_height = (height // vae_scale_factor) * vae_scale_factor
+        aligned_width = (width // vae_scale_factor) * vae_scale_factor
+        return aligned_height, aligned_width
+
     def apply_styling(
         self,
         car_image: Image.Image,
@@ -95,6 +112,14 @@ class CarStylerService:
             product_image, settings.image_size
         )
 
+        # Align dimensions to VAE requirements (multiples of 8) before SDXL processing
+        aligned_height, aligned_width = self._align_dimensions_to_vae(
+            car_image_resized.height, car_image_resized.width
+        )
+        if (aligned_height, aligned_width) != (car_image_resized.height, car_image_resized.width):
+            logger.info(f"Aligning dimensions to VAE requirements: {car_image_resized.size} -> ({aligned_width}, {aligned_height})")
+            car_image_resized = car_image_resized.resize((aligned_width, aligned_height), Image.Resampling.LANCZOS)
+
         # Step 2: Extract edges from car for structure preservation
         logger.info("Extracting edge map for structure preservation...")
         edge_map = self.image_processor.detect_edges(
@@ -130,6 +155,8 @@ class CarStylerService:
                 height=car_image_resized.height,
                 width=car_image_resized.width
             ).images[0]
+
+        logger.info(f"Generated image size: {result.size}, Target size: {car_image_resized.size}")
 
         # Step 6: Post-processing
         logger.info("Applying post-processing...")
